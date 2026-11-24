@@ -1,0 +1,4 @@
+# Preserve CRLF for Delphi source and form files.
+*.pas -text
+*.dpr -text
+*.dfm -text

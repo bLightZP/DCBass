@@ -1,0 +1,9 @@
+/Build/
+/Binary/*.dll
+/Installer/*.exe
+*.ax
+*.dcu
+*.drc
+*.map
+*.rsm
+*.~*

@@ -1,0 +1,94 @@
+Building DCBass
+===============
+
+Delphi 10.3 Rio builds both targets. NSIS 3 builds the combined installer.
+Run the commands below from the project folder in PowerShell.
+
+Dependencies
+------------
+
+1. Extract the YepSfx DSPack fork at commit
+   9338192c0cd547bf3e2da9301b9d53f970fdf834.
+   https://github.com/YepSfx/DSPack/tree/9338192c0cd547bf3e2da9301b9d53f970fdf834
+   Put its src directory under Build\Dependencies\DSPack. Delphi Rio provides
+   native Unicode string handling and VCL PNG support.
+
+2. Obtain the following x64 runtime DLLs from BassAudioSource 0.3.3.
+   https://github.com/v0lt/BassAudioSource/tree/0.3.3/distrib/x64
+
+   bass.dll, bass_aac.dll, bass_mpc.dll, bass_ofr.dll, bass_tta.dll,
+   bassalac.dll, bassape.dll, bassflac.dll, bassopus.dll, basswv.dll,
+   and OptimFROG.dll.
+
+   Add x64\basscd.dll from Un4seen's Windows BASSCD package. Put the 12 DLLs
+   in Build\Dependencies\BASS-x64.
+   https://www.un4seen.com/doc/basscd/basscd.html
+   https://www.un4seen.com/bass.html
+
+3. For a combined installer, put the Win32 runtime DLLs from the legacy
+   DC-Bass Source Mod distribution in Binary. Use these filenames.
+
+   bass.dll, bass_aac.dll, bass_alac.dll, bass_ape.dll, basscd.dll,
+   bassflac.dll, bass_mpc.dll, bass_ofr.dll, bassopus.dll, bass_tak.dll,
+   bass_tta.dll, basswv.dll, OptimFROG.dll, and tak_deco_lib.dll.
+
+   The Win32 build uses the legacy ALAC and APE filenames. TAK is Win32-only.
+   The project README links to the original Source Mod announcement.
+
+Build Win32 with Delphi Rio
+---------------------------
+
+    $delphi = 'C:\Program Files (x86)\Embarcadero\Studio\20.0'
+    $dspack = (Resolve-Path .\Build\Dependencies\DSPack).Path
+    $out = Join-Path $PWD 'Build\Win32'
+    New-Item -ItemType Directory -Force -Path "$out\Units" | Out-Null
+    $units = "$delphi\lib\win32\release;$dspack\src\DSPack;$dspack\src\DirectX9"
+    Push-Location Source
+    try {
+        & "$delphi\bin\dcc32.exe" -Q --no-config -B "-U$units" `
+            "-I$dspack\src\DSPack;$dspack\src\DirectX9" `
+            '-NSSystem;System.Win;Winapi;Vcl;Vcl.Imaging;Vcl.Samples;Data' `
+            '-DWITH_PROPERTY_PAGE' "-E$out" "-NU$out\Units" DCBassSourceMod.dpr
+        if ($LASTEXITCODE -ne 0) { throw 'Win32 build failed' }
+    } finally {
+        Pop-Location
+    }
+
+Build Win64 and stage the installer payload
+-------------------------------------------
+
+With dcc64.exe on PATH, run:
+
+    .\Build-Win64.ps1 -Win32Filter .\Build\Win32\DCBassSourceMod.ax
+
+Use -Compiler, -DSPackRoot, or -BassRuntime to override the default paths.
+Omit -Win32Filter for a standalone Win64 build in Build\Win64.
+
+Build\Dual contains the Win32 filter and DLLs at the top level, with the
+Win64 filter next to them and the Win64 DLLs under x64. Both filters use
+Formats.ini. For manual registration, use the included administrator
+registration scripts and keep the directory layout intact.
+
+Build the NSIS installer
+------------------------
+
+    & 'C:\Program Files (x86)\NSIS\makensis.exe' .\Installer\Binary.nsi
+
+The output is Installer\DCBassSourceMod_1.5.2.1.exe. On x64 Windows, the
+installer offers separate Win32 and Win64 checkboxes, both checked by default.
+
+Legacy Delphi 7 build
+---------------------
+
+The same project can build Win32 with Delphi 7. Its legacy paths in
+Source\DCBassSourceMod.dpr expect DSPack (with DXSUtil.pas), TNT Unicode Controls
+2.3.0 and pngimage 1.564 in sibling directories named DSPack,
+TntUnicodeControls and pngimage. Add the Delphi 7 Spin sample unit to the search
+path. Output is Binary\DCBassSourceMod.ax by default, which can be passed to
+Build-Win64.ps1 as -Win32Filter.
+
+DSPack archive: https://code.google.com/archive/p/dspack/
+TNT Unicode Controls source: https://www.axolot.com/TNT/
+Legacy pngimage reference: https://www.trichview.com/forums/viewtopic.php?t=89
+
+Keep CRLF line endings in .pas, .dpr and .dfm files for legacy Delphi tools.
